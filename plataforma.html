@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pilar Fiore · Pilar Fiore Fonoaudiología</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#F4F8FB;
+    --card:#FFFFFF;
+    --teal:#1B4B66;
+    --teal-dark:#0F3245;
+    --sage:#4A90C4;
+    --sage-light:#E4EEF7;
+    --coral:#2FA8A0;
+    --coral-dark:#25877F;
+    --text:#1B2B36;
+    --text-soft:#5A6E7A;
+    --shadow: 0 8px 24px rgba(15,50,69,0.08);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Nunito Sans', sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{ font-family:'Fraunces', serif; }
+  .hidden{ display:none !important; }
+
+  /* ---------- WAVEFORM SIGNATURE ELEMENT ---------- */
+  .waveform{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    height:44px;
+  }
+  .waveform .bar{
+    width:5px;
+    border-radius:4px;
+    background:linear-gradient(180deg, var(--coral), var(--teal));
+    animation: wave 1.2s ease-in-out infinite;
+  }
+  .waveform .bar:nth-child(1){ height:14px; animation-delay:0s; }
+  .waveform .bar:nth-child(2){ height:28px; animation-delay:0.1s; }
+  .waveform .bar:nth-child(3){ height:40px; animation-delay:0.2s; }
+  .waveform .bar:nth-child(4){ height:24px; animation-delay:0.3s; }
+  .waveform .bar:nth-child(5){ height:36px; animation-delay:0.4s; }
+  .waveform .bar:nth-child(6){ height:18px; animation-delay:0.5s; }
+  .waveform .bar:nth-child(7){ height:30px; animation-delay:0.6s; }
+  @keyframes wave{
+    0%,100%{ transform:scaleY(0.4); opacity:0.7; }
+    50%{ transform:scaleY(1); opacity:1; }
+  }
+  .waveform.small .bar{ width:3px; }
+  .waveform.small{ height:22px; gap:3px; }
+
+  /* ---------- LOGIN / LANDING ---------- */
+  #pantallaInicio{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:32px 20px;
+    text-align:center;
+    animation:fadeSlide 0.7s ease;
+  }
+  @keyframes fadeSlide{
+    from{ opacity:0; transform:translateY(16px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .logo-inicio{ font-size:2rem; font-weight:700; color:var(--teal-dark); margin-top:14px; }
+  .logo-inicio span{ color:var(--coral); }
+  .subtitulo-inicio{ color:var(--text-soft); margin:10px 0 34px; font-size:1.02rem; max-width:340px; }
+  .selector-rol{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    width:100%;
+    max-width:340px;
+  }
+  .btn-rol{
+    background:var(--card);
+    border:2px solid var(--sage-light);
+    border-radius:16px;
+    padding:20px;
+    text-align:left;
+    cursor:pointer;
+    transition:transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow:var(--shadow);
+  }
+  .btn-rol:hover{ transform:translateY(-3px); border-color:var(--coral); }
+  .btn-rol .titulo-rol{ font-weight:800; font-size:1.05rem; color:var(--teal-dark); }
+  .btn-rol .desc-rol{ font-size:0.88rem; color:var(--text-soft); margin-top:4px; }
+
+  /* ---------- LAYOUT GENERAL ---------- */
+  header.top{
+    background:var(--card);
+    padding:16px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:0 2px 12px rgba(15,50,69,0.06);
+    position:sticky; top:0; z-index:20;
+  }
+  header.top .marca{ display:flex; align-items:center; gap:10px; font-weight:800; color:var(--teal-dark); font-size:1.1rem; }
+  .btn-salir{
+    background:none; border:1px solid var(--sage); color:var(--teal);
+    padding:8px 14px; border-radius:10px; cursor:pointer; font-weight:700; font-size:0.85rem;
+  }
+  main{ max-width:720px; margin:0 auto; padding:24px 18px 60px; }
+
+  .seccion-titulo{ font-size:1.3rem; color:var(--teal-dark); margin-bottom:4px; }
+  .seccion-sub{ color:var(--text-soft); font-size:0.9rem; margin-bottom:20px; }
+
+  .card{
+    background:var(--card);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:var(--shadow);
+    margin-bottom:14px;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(15,50,69,0.12); }
+
+  /* ---------- PANEL PROFESIONAL ---------- */
+  .tabs{ display:flex; gap:8px; margin-bottom:20px; }
+  .tab-btn{
+    flex:1; background:var(--sage-light); border:none; padding:10px; border-radius:12px;
+    font-weight:700; color:var(--teal-dark); cursor:pointer; font-size:0.85rem;
+    transition:background 0.2s ease;
+  }
+  .tab-btn.activo{ background:var(--teal); color:#fff; }
+
+  label{ display:block; font-size:0.8rem; font-weight:700; color:var(--text-soft); margin:12px 0 5px; }
+  input[type=text], input[type=url], select, textarea{
+    width:100%; padding:11px 12px; border-radius:10px; border:1.5px solid var(--sage-light);
+    font-family:inherit; font-size:0.95rem; background:#fff; color:var(--text);
+  }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--coral); }
+  .checks-pacientes{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .chip-paciente{
+    padding:8px 12px; border-radius:20px; background:var(--sage-light); font-size:0.85rem;
+    cursor:pointer; user-select:none; border:1.5px solid transparent; font-weight:600; color:var(--teal-dark);
+  }
+  .chip-paciente.seleccionado{ background:var(--teal); color:#fff; border-color:var(--teal); }
+
+  .btn-primario{
+    margin-top:18px; width:100%; background:var(--coral); color:#fff; border:none;
+    padding:13px; border-radius:12px; font-weight:800; font-size:0.95rem; cursor:pointer;
+    transition:transform 0.15s ease, background 0.15s ease;
+  }
+  .btn-primario:hover{ background:var(--coral-dark); transform:translateY(-1px); }
+
+  .clase-item{ display:flex; gap:12px; align-items:flex-start; }
+  .clase-thumb{
+    width:56px; height:56px; border-radius:10px; background:var(--sage-light);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .clase-info .cat{
+    display:inline-block; font-size:0.7rem; font-weight:800; color:var(--teal);
+    background:var(--sage-light); padding:2px 8px; border-radius:8px; margin-bottom:4px;
+  }
+  .clase-info .titulo{ font-weight:700; color:var(--text); }
+  .clase-info .asignados{ font-size:0.78rem; color:var(--text-soft); margin-top:2px; }
+  .paciente-row{ display:flex; align-items:center; gap:12px; }
+  .avatar{
+    width:40px; height:40px; border-radius:50%; background:var(--teal); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0;
+  }
+
+  /* ---------- PORTAL PACIENTE ---------- */
+  .hero-paciente{
+    background:linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border-radius:18px; padding:26px 20px; color:#fff; margin-bottom:22px;
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;
+  }
+  .hero-paciente h2{ font-size:1.2rem; }
+  .hero-paciente p{ opacity:0.85; font-size:0.85rem; }
+  .video-card{ overflow:hidden; padding:0; }
+  .video-wrap{ position:relative; padding-top:56.25%; background:#000; }
+  .video-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .video-body{ padding:14px 16px; }
+  .video-body .cat{
+    display:inline-block; font-size:0.7rem; font-weight:800; color:var(--coral-dark);
+    background:#FFF0EA; padding:3px 9px; border-radius:8px; margin-bottom:6px;
+  }
+  .video-body .titulo{ font-weight:700; font-size:1rem; }
+  .video-body .desc{ font-size:0.85rem; color:var(--text-soft); margin-top:4px; }
+  .vacio{ text-align:center; padding:40px 20px; color:var(--text-soft); }
+
+  select#selectorPacienteDemo{ margin-bottom:18px; }
+
+  /* ---------- LOGIN REAL ---------- */
+  .form-login{ width:100%; max-width:320px; text-align:left; }
+  .form-login label{ margin-top:14px; }
+  .error-login{ color:#C0392B; font-size:0.82rem; margin-top:10px; text-align:center; min-height:18px; }
+  .cargando{ text-align:center; padding:60px 20px; color:var(--text-soft); }
+  .agregar-paciente-card{ background:var(--card); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-bottom:18px; }
+</style>
+</head>
+<body>
+
+<!-- ============ PANTALLA DE CARGA ============ -->
+<div id="pantallaCargando" class="cargando">Cargando...</div>
+
+<!-- ============ PANTALLA DE LOGIN ============ -->
+<div id="pantallaInicio" class="hidden">
+  <div class="waveform">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+  <div class="logo-inicio">Pilar <span>Fiore</span></div>
+  <p class="subtitulo-inicio" id="subtituloLogin">Plataforma de clases y actividades. Ingresá con tu email y contraseña.</p>
+  <form class="form-login" id="formLogin" onsubmit="manejarLogin(event)">
+    <div id="campoNombreRegistro" class="hidden">
+      <label>Nombre completo</label>
+      <input type="text" id="loginNombre" placeholder="Tu nombre">
+    </div>
+    <label>Email</label>
+    <input type="email" id="loginEmail" required placeholder="tu@email.com">
+    <label>Contraseña</label>
+    <input type="password" id="loginPassword" required placeholder="Mínimo 6 caracteres">
+    <button type="submit" class="btn-primario" id="btnLogin">Ingresar</button>
+    <div class="error-login" id="errorLogin"></div>
+  </form>
+  <p style="margin-top:16px; font-size:0.85rem; color:var(--text-soft);">
+    <span id="textoToggle">¿Sos paciente y todavía no tenés cuenta?</span>
+    <a href="#" onclick="toggleModoRegistro(event)" style="color:var(--coral); font-weight:700;" id="linkToggle">Creá tu cuenta acá</a>
+  </p>
+</div>
+
+<!-- ============ PANEL PROFESIONAL ============ -->
+<div id="panelProfesional" class="hidden">
+  <header class="top">
+    <div class="marca">
+      <div class="waveform small"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+      Pilar Fiore · Panel
+    </div>
+    <button class="btn-salir" onclick="salir()">Salir</button>
+  </header>
+  <main>
+    <div class="tabs">
+      <button class="tab-btn activo" id="tabClases" onclick="cambiarTab('clases')">Clases</button>
+      <button class="tab-btn" id="tabPacientes" onclick="cambiarTab('pacientes')">Pacientes</button>
+      <button class="tab-btn" id="tabNueva" onclick="cambiarTab('nueva')">+ Nueva clase</button>
+    </div>
+
+    <!-- LISTA DE CLASES -->
+    <div id="vistaClases">
+      <div class="seccion-titulo">Clases publicadas</div>
+      <div class="seccion-sub">Así las ve Pilar, con quién están compartidas</div>
+      <div id="listaClasesProfesional"></div>
+    </div>
+
+    <!-- LISTA DE PACIENTES -->
+    <div id="vistaPacientes" class="hidden">
+      <div class="seccion-titulo">Pacientes</div>
+      <div class="seccion-sub">Se registran solos desde la pantalla de login, con "Creá tu cuenta acá"</div>
+      <div id="listaPacientes"></div>
+    </div>
+
+    <!-- NUEVA CLASE -->
+    <div id="vistaNueva" class="hidden">
+      <div class="seccion-titulo">Subir nueva clase</div>
+      <div class="seccion-sub">Pegá el link del video (YouTube/Vimeo) y asignala a tus pacientes</div>
+      <div class="card">
+        <label>Título de la clase</label>
+        <input type="text" id="inputTitulo" placeholder="Ej: Ejercicios de respiración - semana 1">
+
+        <label>Categoría</label>
+        <select id="inputCategoria">
+          <option>Articulación</option>
+          <option>Respiración</option>
+          <option>Deglución</option>
+          <option>Voz</option>
+          <option>Lenguaje infantil</option>
+        </select>
+
+        <label>Link del video (YouTube no listado)</label>
+        <input type="url" id="inputVideo" placeholder="https://youtube.com/watch?v=...">
+
+        <label>Descripción breve</label>
+        <textarea id="inputDesc" rows="3" placeholder="Indicaciones para el paciente..."></textarea>
+
+        <label>Asignar a</label>
+        <div class="checks-pacientes" id="checksPacientes"></div>
+
+        <button class="btn-primario" onclick="guardarClase()">Publicar clase</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============ PORTAL PACIENTE ============ -->
+<div id="portalPaciente" class="hidden">
+  <header class="top">
+    <div class="marca">
+      <div class="waveform small"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+      Pilar Fiore
+    </div>
+    <button class="btn-salir" onclick="salir()">Salir</button>
+  </header>
+  <main>
+    <div class="hero-paciente">
+      <h2 id="saludoPaciente">¡Hola!</h2>
+      <p>Estas son tus clases y actividades asignadas por Pilar</p>
+    </div>
+    <div id="listaClasesPaciente"></div>
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   FIREBASE — proyecto dedicado de Pilar Fiore
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBY6B4kEVdME8TrACeT_ulxPMCR6kctRKg",
+  authDomain: "pilarfiorefonoaudiologa.firebaseapp.com",
+  projectId: "pilarfiorefonoaudiologa",
+  storageBucket: "pilarfiorefonoaudiologa.firebasestorage.app",
+  messagingSenderId: "467923091539",
+  appId: "1:467923091539:web:dab90fd3316dc75772c6a6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ⚠️ IMPORTANTE: reemplazar por el UID real de Pilar una vez que ella
+// cree su usuario en Firebase Console → Authentication → Add user.
+// Ese UID es lo que distingue "panel profesional" de "portal paciente".
+const PILAR_UID = "PEGAR_AQUI_EL_UID_DE_PILAR";
+
+let usuarioActual = null;
+let esProfesional = false;
+let clases = [];
+let pacientes = [];
+let seleccionAsignados = [];
+
+/* ---------- LOGIN / REGISTRO ---------- */
+let modoRegistro = false;
+
+function toggleModoRegistro(e){
+  e.preventDefault();
+  modoRegistro = !modoRegistro;
+  document.getElementById('campoNombreRegistro').classList.toggle('hidden', !modoRegistro);
+  document.getElementById('btnLogin').textContent = modoRegistro ? 'Crear cuenta' : 'Ingresar';
+  document.getElementById('subtituloLogin').textContent = modoRegistro
+    ? 'Creá tu cuenta con tu email y una contraseña.'
+    : 'Plataforma de clases y actividades. Ingresá con tu email y contraseña.';
+  document.getElementById('textoToggle').textContent = modoRegistro
+    ? '¿Ya tenés cuenta?' : '¿Sos paciente y todavía no tenés cuenta?';
+  document.getElementById('linkToggle').textContent = modoRegistro
+    ? 'Ingresá acá' : 'Creá tu cuenta acá';
+  document.getElementById('errorLogin').textContent = '';
+}
+
+function manejarLogin(e){
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const nombre = document.getElementById('loginNombre').value.trim();
+  document.getElementById('errorLogin').textContent = '';
+
+  if(modoRegistro){
+    if(!nombre){ document.getElementById('errorLogin').textContent = 'Ingresá tu nombre.'; return; }
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(cred => db.collection('pacientes_fono').doc(cred.user.uid).set({
+        nombre, fecha: firebase.firestore.FieldValue.serverTimestamp()
+      }))
+      .catch(err => document.getElementById('errorLogin').textContent = traducirErrorAuth(err));
+  } else {
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(err => document.getElementById('errorLogin').textContent = traducirErrorAuth(err));
+  }
+}
+
+function traducirErrorAuth(err){
+  if(err.code === 'auth/email-already-in-use') return 'Ese email ya tiene una cuenta. Probá ingresar en vez de registrarte.';
+  if(err.code === 'auth/weak-password') return 'La contraseña necesita al menos 6 caracteres.';
+  if(err.code === 'auth/invalid-email') return 'Ese email no es válido.';
+  if(err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')
+    return 'Email o contraseña incorrectos.';
+  return 'Ocurrió un error. Probá de nuevo.';
+}
+
+function salir(){
+  auth.signOut();
+}
+
+/* ---------- ROUTER SEGÚN ESTADO DE LOGIN ---------- */
+auth.onAuthStateChanged(async (user) => {
+  document.getElementById('pantallaCargando').classList.add('hidden');
+  document.getElementById('pantallaInicio').classList.add('hidden');
+  document.getElementById('panelProfesional').classList.add('hidden');
+  document.getElementById('portalPaciente').classList.add('hidden');
+
+  if(!user){
+    usuarioActual = null;
+    document.getElementById('pantallaInicio').classList.remove('hidden');
+    return;
+  }
+
+  usuarioActual = user;
+  esProfesional = (user.uid === PILAR_UID);
+
+  if(esProfesional){
+    document.getElementById('panelProfesional').classList.remove('hidden');
+    await cargarPacientes();
+    await cargarClasesProfesional();
+    renderPacientesChips();
+    renderClasesProfesional();
+    renderListaPacientes();
+  } else {
+    document.getElementById('portalPaciente').classList.remove('hidden');
+    await cargarClasesPaciente();
+  }
+});
+
+/* ---------- TABS PANEL PROFESIONAL ---------- */
+function cambiarTab(tab){
+  ['Clases','Pacientes','Nueva'].forEach(t=>{
+    document.getElementById('tab'+t).classList.toggle('activo', t.toLowerCase()===tab);
+    document.getElementById('vista'+t).classList.toggle('hidden', t.toLowerCase()!==tab);
+  });
+}
+
+/* ---------- PACIENTES (Firestore: pacientes_fono/{uid}) ---------- */
+async function cargarPacientes(){
+  const snap = await db.collection('pacientes_fono').get();
+  pacientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+function renderPacientesChips(){
+  const cont = document.getElementById('checksPacientes');
+  cont.innerHTML = pacientes.map(p =>
+    `<div class="chip-paciente" data-id="${p.id}" onclick="toggleAsignado('${p.id}', this)">${p.nombre}</div>`
+  ).join('');
+}
+function toggleAsignado(id, el){
+  el.classList.toggle('seleccionado');
+  if(seleccionAsignados.includes(id)) seleccionAsignados = seleccionAsignados.filter(x=>x!==id);
+  else seleccionAsignados.push(id);
+}
+
+function renderListaPacientes(){
+  const cont = document.getElementById('listaPacientes');
+  if(pacientes.length===0){ cont.innerHTML = '<div class="vacio">Todavía no vinculaste pacientes.</div>'; return; }
+  cont.innerHTML = pacientes.map(p => {
+    const cantidad = clases.filter(c => (c.asignados||[]).includes(p.id)).length;
+    const iniciales = p.nombre.split(' ').map(n=>n[0]).join('');
+    return `
+    <div class="card paciente-row">
+      <div class="avatar">${iniciales}</div>
+      <div>
+        <div style="font-weight:700">${p.nombre}</div>
+        <div style="font-size:0.8rem;color:var(--text-soft)">${cantidad} clase(s) asignada(s)</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- CLASES (Firestore: clases_fono) ---------- */
+async function cargarClasesProfesional(){
+  const snap = await db.collection('clases_fono').orderBy('fecha', 'desc').get();
+  clases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function cargarClasesPaciente(){
+  const cont = document.getElementById('listaClasesPaciente');
+  cont.innerHTML = '<div class="vacio">Cargando tus clases...</div>';
+
+  document.getElementById('saludoPaciente').textContent = '¡Hola!';
+  const docPaciente = await db.collection('pacientes_fono').doc(usuarioActual.uid).get();
+  if(docPaciente.exists){
+    const nombre = docPaciente.data().nombre || '';
+    document.getElementById('saludoPaciente').textContent = `¡Hola, ${nombre.split(' ')[0]}!`;
+  }
+
+  const snap = await db.collection('clases_fono')
+    .where('asignados', 'array-contains', usuarioActual.uid)
+    .get();
+
+  if(snap.empty){
+    cont.innerHTML = '<div class="vacio">Todavía no tenés clases asignadas.</div>';
+    return;
+  }
+  cont.innerHTML = snap.docs.map(d => {
+    const c = d.data();
+    return `
+    <div class="card video-card">
+      <div class="video-wrap"><iframe src="${c.video}" allowfullscreen></iframe></div>
+      <div class="video-body">
+        <span class="cat">${c.categoria}</span>
+        <div class="titulo">${c.titulo}</div>
+        <div class="desc">${c.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function guardarClase(){
+  const titulo = document.getElementById('inputTitulo').value.trim();
+  const categoria = document.getElementById('inputCategoria').value;
+  let video = document.getElementById('inputVideo').value.trim();
+  const desc = document.getElementById('inputDesc').value.trim();
+
+  if(!titulo || !video || seleccionAsignados.length===0){
+    alert('Completá título, video y al menos un paciente asignado.');
+    return;
+  }
+  // convierte link normal de YouTube a formato embed
+  const match = video.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+  if(match) video = 'https://www.youtube.com/embed/' + match[1];
+
+  await db.collection('clases_fono').add({
+    titulo, categoria, video, desc,
+    asignados: [...seleccionAsignados],
+    creadoPor: PILAR_UID,
+    fecha: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  document.getElementById('inputTitulo').value='';
+  document.getElementById('inputVideo').value='';
+  document.getElementById('inputDesc').value='';
+  seleccionAsignados = [];
+  renderPacientesChips();
+
+  await cargarClasesProfesional();
+  renderClasesProfesional();
+  renderListaPacientes();
+  cambiarTab('clases');
+}
+
+function renderClasesProfesional(){
+  const cont = document.getElementById('listaClasesProfesional');
+  if(clases.length===0){ cont.innerHTML = '<div class="vacio">Todavía no subiste ninguna clase.</div>'; return; }
+  cont.innerHTML = clases.map(c => {
+    const nombres = (c.asignados||[]).map(id => pacientes.find(p=>p.id===id)?.nombre).filter(Boolean).join(', ');
+    return `
+    <div class="card clase-item">
+      <div class="clase-thumb">🎬</div>
+      <div class="clase-info">
+        <span class="cat">${c.categoria}</span>
+        <div class="titulo">${c.titulo}</div>
+        <div class="asignados">Asignada a: ${nombres || '—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
