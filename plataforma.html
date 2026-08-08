@@ -186,7 +186,7 @@
   .hero-paciente p{ opacity:0.85; font-size:0.85rem; }
   .video-card{ overflow:hidden; padding:0; }
   .video-wrap{ position:relative; padding-top:56.25%; background:#000; }
-  .video-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .video-wrap iframe, .video-wrap video{ position:absolute; inset:0; width:100%; height:100%; border:0; object-fit:contain; background:#000; }
   .video-body{ padding:14px 16px; }
   .video-body .cat{
     display:inline-block; font-size:0.7rem; font-weight:800; color:var(--coral-dark);
@@ -197,6 +197,16 @@
   .vacio{ text-align:center; padding:40px 20px; color:var(--text-soft); }
 
   select#selectorPacienteDemo{ margin-bottom:18px; }
+
+  .logo-provisorio{
+    width:56px; height:56px; border-radius:16px;
+    background:linear-gradient(135deg, var(--teal), var(--sage));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow); margin:0 auto 16px;
+  }
+  .logo-provisorio svg{ width:30px; height:30px; }
+  .logo-provisorio.small{ width:32px; height:32px; border-radius:9px; margin:0; }
+  .logo-provisorio.small svg{ width:18px; height:18px; }
 
   /* ---------- LOGIN REAL ---------- */
   .form-login{ width:100%; max-width:320px; text-align:left; }
@@ -213,35 +223,24 @@
 
 <!-- ============ PANTALLA DE LOGIN ============ -->
 <div id="pantallaInicio" class="hidden">
-  <div class="waveform">
-    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-  </div>
+  <div class="logo-provisorio"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a7 7 0 0 0-7 7v5a3 3 0 0 0 3 3h1v-7H6V9a6 6 0 0 1 12 0v6.5c0 1.4-1.1 2.5-2.5 2.5S13 16.9 13 15.5V11a1 1 0 0 0-2 0v4.5a4.5 4.5 0 0 0 9 0V9a7 7 0 0 0-7-7Z" fill="white"/></svg></div>
   <div class="logo-inicio">Pilar <span>Fiore</span></div>
-  <p class="subtitulo-inicio" id="subtituloLogin">Plataforma de clases y actividades. Ingresá con tu email y contraseña.</p>
+  <p class="subtitulo-inicio">Plataforma de clases y actividades. Ingresá con el usuario y contraseña que te compartió Pilar.</p>
   <form class="form-login" id="formLogin" onsubmit="manejarLogin(event)">
-    <div id="campoNombreRegistro" class="hidden">
-      <label>Nombre completo</label>
-      <input type="text" id="loginNombre" placeholder="Tu nombre">
-    </div>
     <label>Email</label>
     <input type="email" id="loginEmail" required placeholder="tu@email.com">
     <label>Contraseña</label>
-    <input type="password" id="loginPassword" required placeholder="Mínimo 6 caracteres">
+    <input type="password" id="loginPassword" required placeholder="••••••••">
     <button type="submit" class="btn-primario" id="btnLogin">Ingresar</button>
     <div class="error-login" id="errorLogin"></div>
   </form>
-  <p style="margin-top:16px; font-size:0.85rem; color:var(--text-soft);">
-    <span id="textoToggle">¿Sos paciente y todavía no tenés cuenta?</span>
-    <a href="#" onclick="toggleModoRegistro(event)" style="color:var(--coral); font-weight:700;" id="linkToggle">Creá tu cuenta acá</a>
-  </p>
 </div>
 
 <!-- ============ PANEL PROFESIONAL ============ -->
 <div id="panelProfesional" class="hidden">
   <header class="top">
     <div class="marca">
-      <div class="waveform small"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+      <div class="logo-provisorio small"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a7 7 0 0 0-7 7v5a3 3 0 0 0 3 3h1v-7H6V9a6 6 0 0 1 12 0v6.5c0 1.4-1.1 2.5-2.5 2.5S13 16.9 13 15.5V11a1 1 0 0 0-2 0v4.5a4.5 4.5 0 0 0 9 0V9a7 7 0 0 0-7-7Z" fill="white"/></svg></div>
       Pilar Fiore · Panel
     </div>
     <button class="btn-salir" onclick="salir()">Salir</button>
@@ -263,29 +262,33 @@
     <!-- LISTA DE PACIENTES -->
     <div id="vistaPacientes" class="hidden">
       <div class="seccion-titulo">Pacientes</div>
-      <div class="seccion-sub">Se registran solos desde la pantalla de login, con "Creá tu cuenta acá"</div>
+      <div class="seccion-sub">Creás vos el usuario y contraseña de cada paciente</div>
+
+      <div class="agregar-paciente-card">
+        <label>Nombre del paciente</label>
+        <input type="text" id="inputNombrePaciente" placeholder="Ej: Sofía Ramírez">
+        <label>Email del paciente</label>
+        <input type="email" id="inputEmailPaciente" placeholder="paciente@email.com">
+        <label>Contraseña (se la compartís vos)</label>
+        <input type="text" id="inputPasswordPaciente" placeholder="Mínimo 6 caracteres">
+        <button class="btn-primario" id="btnCrearPaciente" onclick="crearPaciente()">Crear acceso del paciente</button>
+        <div class="error-login" id="errorCrearPaciente"></div>
+      </div>
+
       <div id="listaPacientes"></div>
     </div>
 
     <!-- NUEVA CLASE -->
     <div id="vistaNueva" class="hidden">
       <div class="seccion-titulo">Subir nueva clase</div>
-      <div class="seccion-sub">Pegá el link del video (YouTube/Vimeo) y asignala a tus pacientes</div>
+      <div class="seccion-sub">Subí el video desde tu teléfono y asignala a tus pacientes</div>
       <div class="card">
         <label>Título de la clase</label>
         <input type="text" id="inputTitulo" placeholder="Ej: Ejercicios de respiración - semana 1">
 
-        <label>Categoría</label>
-        <select id="inputCategoria">
-          <option>Articulación</option>
-          <option>Respiración</option>
-          <option>Deglución</option>
-          <option>Voz</option>
-          <option>Lenguaje infantil</option>
-        </select>
-
-        <label>Link del video (YouTube no listado)</label>
-        <input type="url" id="inputVideo" placeholder="https://youtube.com/watch?v=...">
+        <label>Video (desde tu teléfono)</label>
+        <input type="file" id="inputVideoArchivo" accept="video/*">
+        <div id="progresoSubida" class="hidden" style="margin-top:8px; font-size:0.82rem; color:var(--text-soft);"></div>
 
         <label>Descripción breve</label>
         <textarea id="inputDesc" rows="3" placeholder="Indicaciones para el paciente..."></textarea>
@@ -293,7 +296,7 @@
         <label>Asignar a</label>
         <div class="checks-pacientes" id="checksPacientes"></div>
 
-        <button class="btn-primario" onclick="guardarClase()">Publicar clase</button>
+        <button class="btn-primario" id="btnGuardarClase" onclick="guardarClase()">Publicar clase</button>
       </div>
     </div>
   </main>
@@ -303,7 +306,7 @@
 <div id="portalPaciente" class="hidden">
   <header class="top">
     <div class="marca">
-      <div class="waveform small"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+      <div class="logo-provisorio small"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a7 7 0 0 0-7 7v5a3 3 0 0 0 3 3h1v-7H6V9a6 6 0 0 1 12 0v6.5c0 1.4-1.1 2.5-2.5 2.5S13 16.9 13 15.5V11a1 1 0 0 0-2 0v4.5a4.5 4.5 0 0 0 9 0V9a7 7 0 0 0-7-7Z" fill="white"/></svg></div>
       Pilar Fiore
     </div>
     <button class="btn-salir" onclick="salir()">Salir</button>
@@ -332,6 +335,12 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+// ⚠️ Cloudinary: creá una cuenta gratis en cloudinary.com (no pide tarjeta),
+// copiá tu "Cloud name" del dashboard, y creá un Upload Preset en modo
+// "Unsigned" (Settings → Upload → Upload presets → Add upload preset).
+// Pegá esos dos valores acá:
+const CLOUDINARY_CLOUD_NAME = "udncii8s";
+const CLOUDINARY_UPLOAD_PRESET = "fonoaudiologapilarfiore";
 
 // ⚠️ IMPORTANTE: reemplazar por el UID real de Pilar una vez que ella
 // cree su usuario en Firebase Console → Authentication → Add user.
@@ -344,46 +353,19 @@ let clases = [];
 let pacientes = [];
 let seleccionAsignados = [];
 
-/* ---------- LOGIN / REGISTRO ---------- */
-let modoRegistro = false;
-
-function toggleModoRegistro(e){
-  e.preventDefault();
-  modoRegistro = !modoRegistro;
-  document.getElementById('campoNombreRegistro').classList.toggle('hidden', !modoRegistro);
-  document.getElementById('btnLogin').textContent = modoRegistro ? 'Crear cuenta' : 'Ingresar';
-  document.getElementById('subtituloLogin').textContent = modoRegistro
-    ? 'Creá tu cuenta con tu email y una contraseña.'
-    : 'Plataforma de clases y actividades. Ingresá con tu email y contraseña.';
-  document.getElementById('textoToggle').textContent = modoRegistro
-    ? '¿Ya tenés cuenta?' : '¿Sos paciente y todavía no tenés cuenta?';
-  document.getElementById('linkToggle').textContent = modoRegistro
-    ? 'Ingresá acá' : 'Creá tu cuenta acá';
-  document.getElementById('errorLogin').textContent = '';
-}
-
+/* ---------- LOGIN ---------- */
 function manejarLogin(e){
   e.preventDefault();
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value;
-  const nombre = document.getElementById('loginNombre').value.trim();
   document.getElementById('errorLogin').textContent = '';
 
-  if(modoRegistro){
-    if(!nombre){ document.getElementById('errorLogin').textContent = 'Ingresá tu nombre.'; return; }
-    auth.createUserWithEmailAndPassword(email, pass)
-      .then(cred => db.collection('pacientes_fono').doc(cred.user.uid).set({
-        nombre, fecha: firebase.firestore.FieldValue.serverTimestamp()
-      }))
-      .catch(err => document.getElementById('errorLogin').textContent = traducirErrorAuth(err));
-  } else {
-    auth.signInWithEmailAndPassword(email, pass)
-      .catch(err => document.getElementById('errorLogin').textContent = traducirErrorAuth(err));
-  }
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(err => document.getElementById('errorLogin').textContent = traducirErrorAuth(err));
 }
 
 function traducirErrorAuth(err){
-  if(err.code === 'auth/email-already-in-use') return 'Ese email ya tiene una cuenta. Probá ingresar en vez de registrarte.';
+  if(err.code === 'auth/email-already-in-use') return 'Ese email ya tiene una cuenta.';
   if(err.code === 'auth/weak-password') return 'La contraseña necesita al menos 6 caracteres.';
   if(err.code === 'auth/invalid-email') return 'Ese email no es válido.';
   if(err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')
@@ -394,6 +376,50 @@ function traducirErrorAuth(err){
 function salir(){
   auth.signOut();
 }
+
+/* ---------- CREAR PACIENTE (lo hace Pilar, desde el panel) ----------
+   Usamos una instancia secundaria de Firebase para crear el usuario
+   sin cerrar la sesión de Pilar (createUser en la app principal
+   loguearía automáticamente al nuevo paciente y sacaría a Pilar). */
+function crearPaciente(){
+  const nombre = document.getElementById('inputNombrePaciente').value.trim();
+  const email = document.getElementById('inputEmailPaciente').value.trim();
+  const pass = document.getElementById('inputPasswordPaciente').value;
+  const errorDiv = document.getElementById('errorCrearPaciente');
+  const btn = document.getElementById('btnCrearPaciente');
+  errorDiv.textContent = '';
+
+  if(!nombre || !email || !pass){ errorDiv.textContent = 'Completá nombre, email y contraseña.'; return; }
+  if(pass.length < 6){ errorDiv.textContent = 'La contraseña necesita al menos 6 caracteres.'; return; }
+
+  btn.disabled = true;
+
+  const appSecundaria = firebase.apps.find(a => a.name === 'Secundaria') ||
+    firebase.initializeApp(firebaseConfig, 'Secundaria');
+  const authSecundaria = appSecundaria.auth();
+
+  authSecundaria.createUserWithEmailAndPassword(email, pass)
+    .then(async (cred) => {
+      const uid = cred.user.uid;
+      await authSecundaria.signOut();
+      await db.collection('pacientes_fono').doc(uid).set({
+        nombre, email, creadoPor: PILAR_UID,
+        fecha: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('inputNombrePaciente').value = '';
+      document.getElementById('inputEmailPaciente').value = '';
+      document.getElementById('inputPasswordPaciente').value = '';
+      btn.disabled = false;
+      await cargarPacientes();
+      renderPacientesChips();
+      renderListaPacientes();
+    })
+    .catch(err => {
+      errorDiv.textContent = traducirErrorAuth(err);
+      btn.disabled = false;
+    });
+}
+
 
 /* ---------- ROUTER SEGÚN ESTADO DE LOGIN ---------- */
 auth.onAuthStateChanged(async (user) => {
@@ -496,9 +522,8 @@ async function cargarClasesPaciente(){
     const c = d.data();
     return `
     <div class="card video-card">
-      <div class="video-wrap"><iframe src="${c.video}" allowfullscreen></iframe></div>
+      <div class="video-wrap"><video src="${c.video}" controls playsinline preload="metadata"></video></div>
       <div class="video-body">
-        <span class="cat">${c.categoria}</span>
         <div class="titulo">${c.titulo}</div>
         <div class="desc">${c.desc}</div>
       </div>
@@ -508,35 +533,69 @@ async function cargarClasesPaciente(){
 
 async function guardarClase(){
   const titulo = document.getElementById('inputTitulo').value.trim();
-  const categoria = document.getElementById('inputCategoria').value;
-  let video = document.getElementById('inputVideo').value.trim();
+  const archivo = document.getElementById('inputVideoArchivo').files[0];
   const desc = document.getElementById('inputDesc').value.trim();
+  const progreso = document.getElementById('progresoSubida');
+  const btn = document.getElementById('btnGuardarClase');
 
-  if(!titulo || !video || seleccionAsignados.length===0){
-    alert('Completá título, video y al menos un paciente asignado.');
+  if(!titulo || !archivo || seleccionAsignados.length===0){
+    alert('Completá título, elegí un video y al menos un paciente asignado.');
     return;
   }
-  // convierte link normal de YouTube a formato embed
-  const match = video.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
-  if(match) video = 'https://www.youtube.com/embed/' + match[1];
 
-  await db.collection('clases_fono').add({
-    titulo, categoria, video, desc,
-    asignados: [...seleccionAsignados],
-    creadoPor: PILAR_UID,
-    fecha: firebase.firestore.FieldValue.serverTimestamp()
+  btn.disabled = true;
+  progreso.classList.remove('hidden');
+  progreso.textContent = 'Subiendo video... 0%';
+
+  subirVideoCloudinary(archivo, (pct) => {
+    progreso.textContent = `Subiendo video... ${pct}%`;
+  }).then(async (video) => {
+    await db.collection('clases_fono').add({
+      titulo, video, desc,
+      asignados: [...seleccionAsignados],
+      creadoPor: PILAR_UID,
+      fecha: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById('inputTitulo').value='';
+    document.getElementById('inputVideoArchivo').value='';
+    document.getElementById('inputDesc').value='';
+    seleccionAsignados = [];
+    renderPacientesChips();
+    progreso.classList.add('hidden');
+    btn.disabled = false;
+
+    await cargarClasesProfesional();
+    renderClasesProfesional();
+    renderListaPacientes();
+    cambiarTab('clases');
+  }).catch(err => {
+    progreso.textContent = 'Error al subir el video. Probá de nuevo.';
+    btn.disabled = false;
   });
+}
 
-  document.getElementById('inputTitulo').value='';
-  document.getElementById('inputVideo').value='';
-  document.getElementById('inputDesc').value='';
-  seleccionAsignados = [];
-  renderPacientesChips();
-
-  await cargarClasesProfesional();
-  renderClasesProfesional();
-  renderListaPacientes();
-  cambiarTab('clases');
+function subirVideoCloudinary(archivo, onProgress){
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+    xhr.upload.onprogress = (e) => {
+      if(e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if(xhr.status === 200){
+        const data = JSON.parse(xhr.responseText);
+        resolve(data.secure_url);
+      } else {
+        reject(new Error('Error al subir a Cloudinary'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Error de red'));
+    const formData = new FormData();
+    formData.append('file', archivo);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    xhr.send(formData);
+  });
 }
 
 function renderClasesProfesional(){
@@ -548,7 +607,6 @@ function renderClasesProfesional(){
     <div class="card clase-item">
       <div class="clase-thumb">🎬</div>
       <div class="clase-info">
-        <span class="cat">${c.categoria}</span>
         <div class="titulo">${c.titulo}</div>
         <div class="asignados">Asignada a: ${nombres || '—'}</div>
       </div>
