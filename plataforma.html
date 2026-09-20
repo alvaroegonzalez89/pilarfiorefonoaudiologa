@@ -247,15 +247,15 @@
   </header>
   <main>
     <div class="tabs">
-      <button class="tab-btn activo" id="tabClases" onclick="cambiarTab('clases')">Clases</button>
+      <button class="tab-btn activo" id="tabClases" onclick="cambiarTab('clases')">Actividades</button>
       <button class="tab-btn" id="tabPacientes" onclick="cambiarTab('pacientes')">Pacientes</button>
-      <button class="tab-btn" id="tabNueva" onclick="cambiarTab('nueva')">+ Nueva clase</button>
+      <button class="tab-btn" id="tabNueva" onclick="cambiarTab('nueva')">+ Nueva actividad</button>
     </div>
 
     <!-- LISTA DE CLASES -->
     <div id="vistaClases">
-      <div class="seccion-titulo">Clases publicadas</div>
-      <div class="seccion-sub">Así las ve Pilar, con quién están compartidas</div>
+      <div class="seccion-titulo">Actividades publicadas</div>
+      <div class="seccion-sub">Tocá una para verla, editarla o eliminarla</div>
       <div id="listaClasesProfesional"></div>
     </div>
 
@@ -269,6 +269,8 @@
         <input type="text" id="inputNombrePaciente" placeholder="Ej: Sofía Ramírez">
         <label>Email del paciente</label>
         <input type="email" id="inputEmailPaciente" placeholder="paciente@email.com">
+        <label>WhatsApp del paciente (opcional, para avisarle)</label>
+        <input type="text" id="inputTelefonoPaciente" placeholder="Ej: 5492984635790">
         <label>Contraseña (se la compartís vos)</label>
         <input type="text" id="inputPasswordPaciente" placeholder="Mínimo 6 caracteres">
         <button class="btn-primario" id="btnCrearPaciente" onclick="crearPaciente()">Crear acceso del paciente</button>
@@ -278,25 +280,32 @@
       <div id="listaPacientes"></div>
     </div>
 
-    <!-- NUEVA CLASE -->
+    <!-- NUEVA ACTIVIDAD -->
     <div id="vistaNueva" class="hidden">
-      <div class="seccion-titulo">Subir nueva clase</div>
-      <div class="seccion-sub">Subí el video desde tu teléfono y asignala a tus pacientes</div>
+      <div class="seccion-titulo" id="tituloVistaNueva">Subir nueva actividad</div>
+      <div class="seccion-sub" id="subtituloVistaNueva">Un video, una imagen, un PDF y/o un link — completá lo que necesites</div>
       <div class="card">
-        <label>Título de la clase</label>
+        <div id="archivoActualInfo" class="hidden" style="margin-bottom:10px; font-size:0.85rem; color:var(--text-soft);"></div>
+
+        <label>Título</label>
         <input type="text" id="inputTitulo" placeholder="Ej: Ejercicios de respiración - semana 1">
 
-        <label>Video (desde tu teléfono)</label>
-        <input type="file" id="inputVideoArchivo" accept="video/*">
+        <label>Mensaje para el paciente</label>
+        <textarea id="inputDesc" rows="3" placeholder="Indicaciones, consigna de la actividad..."></textarea>
+
+        <label id="labelArchivo">Archivo (opcional): video, imagen o PDF</label>
+        <input type="file" id="inputArchivo" accept="video/*,image/*,application/pdf">
         <div id="progresoSubida" class="hidden" style="margin-top:8px; font-size:0.82rem; color:var(--text-soft);"></div>
 
-        <label>Descripción breve</label>
-        <textarea id="inputDesc" rows="3" placeholder="Indicaciones para el paciente..."></textarea>
+        <label>Link (opcional): a un video de YouTube, un documento, lo que necesites</label>
+        <input type="url" id="inputLink" placeholder="https://...">
 
         <label>Asignar a</label>
         <div class="checks-pacientes" id="checksPacientes"></div>
 
-        <button class="btn-primario" id="btnGuardarClase" onclick="guardarClase()">Publicar clase</button>
+        <button class="btn-primario" id="btnGuardarClase" onclick="guardarClase()">Publicar actividad</button>
+        <button class="btn-primario hidden" id="btnCancelarEdicion" onclick="cancelarEdicion()" style="background:var(--sage-light); color:var(--teal-dark); margin-top:8px;">Cancelar</button>
+        <button class="btn-primario hidden" id="btnEliminarClase" onclick="eliminarClaseActual()" style="background:#C0392B; margin-top:8px;">Eliminar actividad</button>
       </div>
     </div>
   </main>
@@ -352,6 +361,7 @@ let esProfesional = false;
 let clases = [];
 let pacientes = [];
 let seleccionAsignados = [];
+let editandoId = null;
 
 /* ---------- LOGIN ---------- */
 function manejarLogin(e){
@@ -384,6 +394,7 @@ function salir(){
 function crearPaciente(){
   const nombre = document.getElementById('inputNombrePaciente').value.trim();
   const email = document.getElementById('inputEmailPaciente').value.trim();
+  const telefono = document.getElementById('inputTelefonoPaciente').value.trim().replace(/\D/g, '');
   const pass = document.getElementById('inputPasswordPaciente').value;
   const errorDiv = document.getElementById('errorCrearPaciente');
   const btn = document.getElementById('btnCrearPaciente');
@@ -403,11 +414,12 @@ function crearPaciente(){
       const uid = cred.user.uid;
       await authSecundaria.signOut();
       await db.collection('pacientes_fono').doc(uid).set({
-        nombre, email, creadoPor: PILAR_UID,
+        nombre, email, telefono, creadoPor: PILAR_UID,
         fecha: firebase.firestore.FieldValue.serverTimestamp()
       });
       document.getElementById('inputNombrePaciente').value = '';
       document.getElementById('inputEmailPaciente').value = '';
+      document.getElementById('inputTelefonoPaciente').value = '';
       document.getElementById('inputPasswordPaciente').value = '';
       btn.disabled = false;
       await cargarPacientes();
@@ -482,15 +494,29 @@ function renderListaPacientes(){
   cont.innerHTML = pacientes.map(p => {
     const cantidad = clases.filter(c => (c.asignados||[]).includes(p.id)).length;
     const iniciales = p.nombre.split(' ').map(n=>n[0]).join('');
+    const telefonoTexto = p.telefono ? `📱 ${p.telefono}` : '<span style="color:#C0392B;">Sin WhatsApp cargado</span>';
     return `
     <div class="card paciente-row">
       <div class="avatar">${iniciales}</div>
-      <div>
+      <div style="flex:1;">
         <div style="font-weight:700">${p.nombre}</div>
-        <div style="font-size:0.8rem;color:var(--text-soft)">${cantidad} clase(s) asignada(s)</div>
+        <div style="font-size:0.8rem;color:var(--text-soft)">${cantidad} actividad(es) asignada(s)</div>
+        <div style="font-size:0.8rem;color:var(--text-soft); margin-top:2px;">${telefonoTexto}</div>
       </div>
+      <button class="btn-primario" style="width:auto; margin-top:0; padding:8px 14px; font-size:0.78rem;" onclick="editarTelefonoPaciente('${p.id}')">✏️ WhatsApp</button>
     </div>`;
   }).join('');
+}
+
+async function editarTelefonoPaciente(id){
+  const paciente = pacientes.find(p => p.id === id);
+  const actual = paciente?.telefono || '';
+  const nuevo = prompt('Número de WhatsApp del paciente (con código de país, ej: 5492984635790):', actual);
+  if(nuevo === null) return; // canceló
+  const limpio = nuevo.trim().replace(/\D/g, '');
+  await db.collection('pacientes_fono').doc(id).update({ telefono: limpio || null });
+  await cargarPacientes();
+  renderListaPacientes();
 }
 
 /* ---------- CLASES (Firestore: clases_fono) ---------- */
@@ -501,7 +527,7 @@ async function cargarClasesProfesional(){
 
 async function cargarClasesPaciente(){
   const cont = document.getElementById('listaClasesPaciente');
-  cont.innerHTML = '<div class="vacio">Cargando tus clases...</div>';
+  cont.innerHTML = '<div class="vacio">Cargando tus actividades...</div>';
 
   document.getElementById('saludoPaciente').textContent = '¡Hola!';
   const docPaciente = await db.collection('pacientes_fono').doc(usuarioActual.uid).get();
@@ -515,53 +541,86 @@ async function cargarClasesPaciente(){
     .get();
 
   if(snap.empty){
-    cont.innerHTML = '<div class="vacio">Todavía no tenés clases asignadas.</div>';
+    cont.innerHTML = '<div class="vacio">Todavía no tenés actividades asignadas.</div>';
     return;
   }
-  cont.innerHTML = snap.docs.map(d => {
-    const c = d.data();
-    return `
+  cont.innerHTML = snap.docs.map(d => renderTarjetaActividad(d.data())).join('');
+}
+
+function renderTarjetaActividad(c){
+  // Compatibilidad con actividades creadas antes de esta actualización,
+  // que guardaban el video en el campo "video" en vez de "archivoUrl"/"archivoTipo"
+  const archivoUrl = c.archivoUrl || c.video || null;
+  const archivoTipo = c.archivoTipo || (c.video ? 'video' : null);
+
+  let contenidoArchivo = '';
+  if(archivoUrl){
+    if(archivoTipo === 'video'){
+      contenidoArchivo = `<div class="video-wrap"><video src="${archivoUrl}" controls playsinline preload="metadata"></video></div>`;
+    } else if(archivoTipo === 'image'){
+      contenidoArchivo = `<img src="${archivoUrl}" style="width:100%; display:block;">`;
+    } else {
+      contenidoArchivo = `<a href="${archivoUrl}" target="_blank" class="btn-primario" style="display:block; text-align:center; text-decoration:none; margin-top:10px;">📄 Ver archivo</a>`;
+    }
+  }
+  const botonLink = c.link
+    ? `<a href="${c.link}" target="_blank" class="btn-primario" style="display:block; text-align:center; text-decoration:none; margin-top:10px;">🔗 Abrir link</a>`
+    : '';
+  return `
     <div class="card video-card">
-      <div class="video-wrap"><video src="${c.video}" controls playsinline preload="metadata"></video></div>
+      ${contenidoArchivo}
       <div class="video-body">
         <div class="titulo">${c.titulo}</div>
-        <div class="desc">${c.desc}</div>
+        <div class="desc">${c.desc || ''}</div>
+        ${botonLink}
       </div>
     </div>`;
-  }).join('');
 }
 
 async function guardarClase(){
   const titulo = document.getElementById('inputTitulo').value.trim();
-  const archivo = document.getElementById('inputVideoArchivo').files[0];
+  const archivo = document.getElementById('inputArchivo').files[0];
+  const link = document.getElementById('inputLink').value.trim();
   const desc = document.getElementById('inputDesc').value.trim();
   const progreso = document.getElementById('progresoSubida');
   const btn = document.getElementById('btnGuardarClase');
 
-  if(!titulo || !archivo || seleccionAsignados.length===0){
-    alert('Completá título, elegí un video y al menos un paciente asignado.');
+  if(!titulo || seleccionAsignados.length===0){
+    alert('Completá el título y elegí al menos un paciente asignado.');
+    return;
+  }
+  if(!archivo && !link && !desc && !editandoId){
+    alert('Agregá al menos un archivo, un link o un mensaje.');
     return;
   }
 
   btn.disabled = true;
-  progreso.classList.remove('hidden');
-  progreso.textContent = 'Subiendo video... 0%';
 
-  subirVideoCloudinary(archivo, (pct) => {
-    progreso.textContent = `Subiendo video... ${pct}%`;
-  }).then(async (video) => {
-    await db.collection('clases_fono').add({
-      titulo, video, desc,
-      asignados: [...seleccionAsignados],
-      creadoPor: PILAR_UID,
-      fecha: firebase.firestore.FieldValue.serverTimestamp()
-    });
+  const guardarEnFirestore = async (archivoUrl, archivoTipo) => {
+    const datos = {
+      titulo, desc, link: link || null,
+      asignados: [...seleccionAsignados]
+    };
+    // Si no se subió un archivo nuevo durante una edición, se conserva el que ya tenía
+    if(archivoUrl !== undefined){
+      datos.archivoUrl = archivoUrl || null;
+      datos.archivoTipo = archivoTipo || null;
+    }
 
-    document.getElementById('inputTitulo').value='';
-    document.getElementById('inputVideoArchivo').value='';
-    document.getElementById('inputDesc').value='';
-    seleccionAsignados = [];
-    renderPacientesChips();
+    if(editandoId){
+      await db.collection('clases_fono').doc(editandoId).update(datos);
+    } else {
+      await db.collection('clases_fono').add({
+        ...datos,
+        creadoPor: PILAR_UID,
+        fecha: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    const esNueva = !editandoId;
+    const pacientesAvisar = pacientes.filter(p => seleccionAsignados.includes(p.id) && p.telefono);
+
+    resetearFormularioActividad();
     progreso.classList.add('hidden');
     btn.disabled = false;
 
@@ -569,23 +628,103 @@ async function guardarClase(){
     renderClasesProfesional();
     renderListaPacientes();
     cambiarTab('clases');
-  }).catch(err => {
-    progreso.textContent = 'Error al subir el video. Probá de nuevo.';
-    btn.disabled = false;
-  });
+    if(esNueva) mostrarAvisosWhatsapp(pacientesAvisar, titulo);
+  };
+
+  if(archivo){
+    progreso.classList.remove('hidden');
+    progreso.textContent = 'Subiendo archivo... 0%';
+    subirArchivoCloudinary(archivo, (pct) => {
+      progreso.textContent = `Subiendo archivo... ${pct}%`;
+    }).then(({url, tipo}) => guardarEnFirestore(url, tipo))
+      .catch(() => {
+        progreso.textContent = 'Error al subir el archivo. Probá de nuevo.';
+        btn.disabled = false;
+      });
+  } else if(editandoId){
+    guardarEnFirestore(undefined, undefined);
+  } else {
+    guardarEnFirestore(null, null);
+  }
 }
 
-function subirVideoCloudinary(archivo, onProgress){
+function resetearFormularioActividad(){
+  document.getElementById('inputTitulo').value='';
+  document.getElementById('inputArchivo').value='';
+  document.getElementById('inputLink').value='';
+  document.getElementById('inputDesc').value='';
+  document.getElementById('archivoActualInfo').classList.add('hidden');
+  document.getElementById('btnCancelarEdicion').classList.add('hidden');
+  document.getElementById('btnEliminarClase').classList.add('hidden');
+  document.getElementById('btnGuardarClase').textContent = 'Publicar actividad';
+  document.getElementById('tituloVistaNueva').textContent = 'Subir nueva actividad';
+  document.getElementById('subtituloVistaNueva').textContent = 'Un video, una imagen, un PDF y/o un link — completá lo que necesites';
+  seleccionAsignados = [];
+  editandoId = null;
+  renderPacientesChips();
+}
+
+function abrirEdicionClase(id){
+  const c = clases.find(x => x.id === id);
+  if(!c) return;
+
+  editandoId = id;
+  document.getElementById('inputTitulo').value = c.titulo || '';
+  document.getElementById('inputDesc').value = c.desc || '';
+  document.getElementById('inputLink').value = c.link || '';
+  seleccionAsignados = [...(c.asignados || [])];
+  renderPacientesChips();
+  // marcar como seleccionados los chips de los pacientes ya asignados
+  document.querySelectorAll('#checksPacientes .chip-paciente').forEach(chip => {
+    if(seleccionAsignados.includes(chip.dataset.id)) chip.classList.add('seleccionado');
+  });
+
+  const archivoUrl = c.archivoUrl || c.video || null;
+  const infoDiv = document.getElementById('archivoActualInfo');
+  if(archivoUrl){
+    infoDiv.innerHTML = `Archivo actual: <a href="${archivoUrl}" target="_blank">verlo acá</a>. Subí uno nuevo abajo solo si querés reemplazarlo.`;
+    infoDiv.classList.remove('hidden');
+  } else {
+    infoDiv.classList.add('hidden');
+  }
+
+  document.getElementById('tituloVistaNueva').textContent = 'Editar actividad';
+  document.getElementById('subtituloVistaNueva').textContent = 'Modificá lo que necesites y guardá los cambios';
+  document.getElementById('btnGuardarClase').textContent = 'Guardar cambios';
+  document.getElementById('btnCancelarEdicion').classList.remove('hidden');
+  document.getElementById('btnEliminarClase').classList.remove('hidden');
+
+  cambiarTab('nueva');
+}
+
+function cancelarEdicion(){
+  resetearFormularioActividad();
+  cambiarTab('clases');
+}
+
+async function eliminarClaseActual(){
+  if(!editandoId) return;
+  if(!confirm('¿Seguro que querés eliminar esta actividad? No se puede deshacer.')) return;
+
+  await db.collection('clases_fono').doc(editandoId).delete();
+  resetearFormularioActividad();
+  await cargarClasesProfesional();
+  renderClasesProfesional();
+  renderListaPacientes();
+  cambiarTab('clases');
+}
+
+function subirArchivoCloudinary(archivo, onProgress){
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`);
     xhr.upload.onprogress = (e) => {
       if(e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () => {
       if(xhr.status === 200){
         const data = JSON.parse(xhr.responseText);
-        resolve(data.secure_url);
+        resolve({ url: data.secure_url, tipo: data.resource_type });
       } else {
         reject(new Error('Error al subir a Cloudinary'));
       }
@@ -598,14 +737,36 @@ function subirVideoCloudinary(archivo, onProgress){
   });
 }
 
+/* ---------- AVISO POR WHATSAPP ----------
+   No hay notificaciones push automáticas (necesitarían un backend propio
+   con Firebase Cloud Functions y plan Blaze). En cambio, después de publicar
+   una actividad, se arma un link de WhatsApp pre-cargado por cada paciente
+   con teléfono cargado, para que Pilar lo mande con un solo toque. */
+function mostrarAvisosWhatsapp(pacientesAvisar, tituloActividad){
+  if(pacientesAvisar.length === 0) return;
+  const mensaje = encodeURIComponent(`Hola! Te dejé una nueva actividad en la plataforma: "${tituloActividad}". Podés verla entrando a tu cuenta 👂`);
+  const links = pacientesAvisar.map(p =>
+    `<a href="https://wa.me/${p.telefono}?text=${mensaje}" target="_blank" class="btn-primario" style="display:block; text-decoration:none; text-align:center; margin-top:8px; background:#25D366;">📲 Avisar a ${p.nombre}</a>`
+  ).join('');
+  const cont = document.getElementById('listaClasesProfesional');
+  cont.insertAdjacentHTML('afterbegin', `<div class="card">
+    <div style="font-weight:700; margin-bottom:6px;">Actividad publicada ✅</div>
+    <div style="font-size:0.85rem; color:var(--text-soft); margin-bottom:4px;">Avisale a cada paciente por WhatsApp:</div>
+    ${links}
+  </div>`);
+}
+
 function renderClasesProfesional(){
   const cont = document.getElementById('listaClasesProfesional');
-  if(clases.length===0){ cont.innerHTML = '<div class="vacio">Todavía no subiste ninguna clase.</div>'; return; }
+  if(clases.length===0){ cont.innerHTML = '<div class="vacio">Todavía no subiste ninguna actividad.</div>'; return; }
   cont.innerHTML = clases.map(c => {
     const nombres = (c.asignados||[]).map(id => pacientes.find(p=>p.id===id)?.nombre).filter(Boolean).join(', ');
+    const archivoUrl = c.archivoUrl || c.video || null;
+    const archivoTipo = c.archivoTipo || (c.video ? 'video' : null);
+    const icono = archivoTipo === 'video' ? '🎬' : archivoTipo === 'image' ? '🖼️' : archivoUrl ? '📄' : c.link ? '🔗' : '📝';
     return `
-    <div class="card clase-item">
-      <div class="clase-thumb">🎬</div>
+    <div class="card clase-item" style="cursor:pointer;" onclick="abrirEdicionClase('${c.id}')">
+      <div class="clase-thumb">${icono}</div>
       <div class="clase-info">
         <div class="titulo">${c.titulo}</div>
         <div class="asignados">Asignada a: ${nombres || '—'}</div>
