@@ -292,6 +292,7 @@
 
         <label>Módulo</label>
         <select id="inputModulo">
+          <option value="bienvenida">Bienvenida</option>
           <option value="oido-a-oido">Oído a oído</option>
           <option value="dos-oidos">Dos oídos, una experiencia</option>
           <option value="escuchar-sin-agotarte">Escuchar sin agotarte</option>
@@ -372,6 +373,7 @@ let seleccionAsignados = [];
 let editandoId = null;
 
 const MODULOS = [
+  { id: 'bienvenida', titulo: 'Bienvenida', desc: 'Un mensaje personal de Pilar para arrancar el programa.' },
   { id: 'oido-a-oido', titulo: 'Oído a oído', desc: 'Entrenaremos cada oído de manera individual para fortalecer tu capacidad de reconocer y comprender lo que escuchás.' },
   { id: 'dos-oidos', titulo: 'Dos oídos, una experiencia', desc: 'Trabajaremos la binauralidad, la localización sonora y el aprovechamiento de la información que recibís a través de ambos oídos, incorporando progresivamente situaciones con ruido de fondo.' },
   { id: 'escuchar-sin-agotarte', titulo: 'Escuchar sin agotarte', desc: 'Entrenaremos atención y memoria auditiva, mientras aprendemos a reconocer y manejar el esfuerzo y la fatiga que puede generar escuchar.' },
@@ -539,6 +541,44 @@ async function editarTelefonoPaciente(id){
 async function cargarClasesProfesional(){
   const snap = await db.collection('clases_fono').orderBy('fecha', 'desc').get();
   clases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  await asegurarOrden();
+}
+
+// Las actividades creadas antes de tener orden manual no tienen el campo "orden".
+// La primera vez que se cargan, les asigna un orden (según la fecha, más viejas primero)
+// y lo guarda en Firestore, para que de ahí en más se puedan reordenar con las flechas.
+async function asegurarOrden(){
+  const pendientes = [];
+  MODULOS.forEach(m => {
+    const delModulo = clases
+      .filter(c => (c.modulo || 'oido-a-oido') === m.id && c.orden === undefined)
+      .sort((a,b) => (a.fecha?.seconds||0) - (b.fecha?.seconds||0));
+    delModulo.forEach((c, i) => {
+      c.orden = i;
+      pendientes.push(db.collection('clases_fono').doc(c.id).update({ orden: i }));
+    });
+  });
+  if(pendientes.length) await Promise.all(pendientes);
+}
+
+async function moverActividad(id, moduloId, direccion){
+  const delModulo = clases
+    .filter(c => (c.modulo || 'oido-a-oido') === moduloId)
+    .sort((a,b) => (a.orden ?? 0) - (b.orden ?? 0));
+
+  const i = delModulo.findIndex(c => c.id === id);
+  const j = direccion === 'arriba' ? i - 1 : i + 1;
+  if(i === -1 || j < 0 || j >= delModulo.length) return;
+
+  const a = delModulo[i], b = delModulo[j];
+  const ordenA = a.orden, ordenB = b.orden;
+  a.orden = ordenB; b.orden = ordenA;
+
+  await Promise.all([
+    db.collection('clases_fono').doc(a.id).update({ orden: a.orden }),
+    db.collection('clases_fono').doc(b.id).update({ orden: b.orden })
+  ]);
+  renderClasesProfesional();
 }
 
 async function cargarClasesPaciente(){
@@ -563,7 +603,9 @@ async function cargarClasesPaciente(){
 
   const actividades = snap.docs.map(d => d.data());
   cont.innerHTML = MODULOS.map(m => {
-    const actividadesModulo = actividades.filter(c => (c.modulo || 'oido-a-oido') === m.id);
+    const actividadesModulo = actividades
+      .filter(c => (c.modulo || 'oido-a-oido') === m.id)
+      .sort((a,b) => (a.orden ?? 0) - (b.orden ?? 0));
     if(actividadesModulo.length === 0) return '';
     return `
     <div style="margin-bottom:28px;">
@@ -635,9 +677,19 @@ async function guardarClase(){
       datos.archivoTipo = archivoTipo || null;
     }
 
+    const finalDelModulo = () => {
+      const delModulo = clases.filter(c => (c.modulo || 'oido-a-oido') === modulo);
+      return delModulo.length ? Math.max(...delModulo.map(c => c.orden ?? 0)) + 1 : 0;
+    };
+
     if(editandoId){
+      const original = clases.find(c => c.id === editandoId);
+      if(original && (original.modulo || 'oido-a-oido') !== modulo){
+        datos.orden = finalDelModulo();
+      }
       await db.collection('clases_fono').doc(editandoId).update(datos);
     } else {
+      datos.orden = finalDelModulo();
       await db.collection('clases_fono').add({
         ...datos,
         creadoPor: PILAR_UID,
@@ -791,20 +843,29 @@ function renderClasesProfesional(){
   if(clases.length===0){ cont.innerHTML = '<div class="vacio">Todavía no subiste ninguna actividad.</div>'; return; }
 
   cont.innerHTML = MODULOS.map(m => {
-    const actividadesModulo = clases.filter(c => (c.modulo || 'oido-a-oido') === m.id);
+    const actividadesModulo = clases
+      .filter(c => (c.modulo || 'oido-a-oido') === m.id)
+      .sort((a,b) => (a.orden ?? 0) - (b.orden ?? 0));
+
     const items = actividadesModulo.length === 0
       ? '<div class="vacio" style="padding:16px;">Todavía no hay actividades en este módulo.</div>'
-      : actividadesModulo.map(c => {
+      : actividadesModulo.map((c, i) => {
           const nombres = (c.asignados||[]).map(id => pacientes.find(p=>p.id===id)?.nombre).filter(Boolean).join(', ');
           const archivoUrl = c.archivoUrl || c.video || null;
           const archivoTipo = c.archivoTipo || (c.video ? 'video' : null);
           const icono = archivoTipo === 'video' ? '🎬' : archivoTipo === 'image' ? '🖼️' : archivoUrl ? '📄' : c.link ? '🔗' : '📝';
+          const esPrimera = i === 0;
+          const esUltima = i === actividadesModulo.length - 1;
           return `
           <div class="card clase-item" style="cursor:pointer;" onclick="abrirEdicionClase('${c.id}')">
             <div class="clase-thumb">${icono}</div>
             <div class="clase-info">
               <div class="titulo">${c.titulo}</div>
               <div class="asignados">Asignada a: ${nombres || '—'}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;" onclick="event.stopPropagation();">
+              <button ${esPrimera ? 'disabled' : ''} onclick="moverActividad('${c.id}','${m.id}','arriba')" style="border:none; background:${esPrimera ? 'var(--sage-light)' : 'var(--teal)'}; color:#fff; border-radius:6px; width:28px; height:28px; cursor:${esPrimera ? 'default' : 'pointer'};">▲</button>
+              <button ${esUltima ? 'disabled' : ''} onclick="moverActividad('${c.id}','${m.id}','abajo')" style="border:none; background:${esUltima ? 'var(--sage-light)' : 'var(--teal)'}; color:#fff; border-radius:6px; width:28px; height:28px; cursor:${esUltima ? 'default' : 'pointer'};">▼</button>
             </div>
           </div>`;
         }).join('');
