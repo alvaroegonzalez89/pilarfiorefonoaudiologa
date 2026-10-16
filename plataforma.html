@@ -17,8 +17,8 @@
     --teal-dark:#0F3245;
     --sage:#4A90C4;
     --sage-light:#E4EEF7;
-    --coral:#2FA8A0;
-    --coral-dark:#25877F;
+    --coral:#2E7DD1;
+    --coral-dark:#1F63B0;
     --text:#1B2B36;
     --text-soft:#5A6E7A;
     --shadow: 0 8px 24px rgba(15,50,69,0.08);
@@ -214,6 +214,20 @@
   .error-login{ color:#C0392B; font-size:0.82rem; margin-top:10px; text-align:center; min-height:18px; }
   .cargando{ text-align:center; padding:60px 20px; color:var(--text-soft); }
   .agregar-paciente-card{ background:var(--card); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-bottom:18px; }
+
+  /* ---------- AJUSTES v3: logo login, módulos, progreso ---------- */
+  #pantallaInicio .logo-provisorio{ width:300px; max-width:85vw; height:240px; margin-bottom:8px; }
+  .hero-paciente h2{ font-family:'Fraunces', serif; font-size:1.6rem; }
+  .video-body .desc{ white-space:pre-line; line-height:1.55; }
+  .modulo-franja{ background:linear-gradient(135deg, var(--teal), var(--sage)); color:#fff; border-radius:16px; padding:18px 18px 16px; margin:0 0 14px; box-shadow:var(--shadow); }
+  .modulo-franja .modulo-titulo{ font-family:'Fraunces', serif; font-size:1.55rem; font-weight:700; line-height:1.2; }
+  .modulo-franja .modulo-desc{ font-size:0.88rem; opacity:0.92; margin-top:6px; line-height:1.5; }
+  .progreso-wrap{ width:100%; margin-top:6px; }
+  .progreso-barra{ height:10px; background:rgba(255,255,255,0.25); border-radius:10px; overflow:hidden; }
+  .progreso-relleno{ height:100%; width:0; background:#fff; border-radius:10px; transition:width .4s ease; }
+  .progreso-texto{ font-size:0.82rem; margin-top:6px; opacity:0.95; }
+  .btn-completar{ display:flex; align-items:center; justify-content:center; width:100%; margin-top:12px; padding:11px; border-radius:12px; border:2px solid var(--sage); background:#fff; color:var(--teal-dark); font-weight:800; font-size:0.9rem; cursor:pointer; font-family:inherit; }
+  .btn-completar.hecha{ background:var(--coral); border-color:var(--coral); color:#fff; }
 </style>
 </head>
 <body>
@@ -297,6 +311,7 @@
           <option value="dos-oidos">Dos oídos, una experiencia</option>
           <option value="escuchar-sin-agotarte">Escuchar sin agotarte</option>
           <option value="control-de-tu-escucha">Tomá el control de tu escucha</option>
+          <option value="habilitacion-auditiva">Habilitación Auditiva</option>
         </select>
 
         <label>Mensaje para el paciente</label>
@@ -331,8 +346,12 @@
   </header>
   <main>
     <div class="hero-paciente">
-      <h2 id="saludoPaciente">¡Hola!</h2>
-      <p>Estas son tus clases y actividades asignadas por Pilar</p>
+      <h2 id="saludoPaciente">¡Bienvenido/a!</h2>
+      <p>Tu Programa Integral de Rehabilitación Auditiva</p>
+      <div class="progreso-wrap">
+        <div class="progreso-barra"><div class="progreso-relleno" id="progresoRelleno"></div></div>
+        <div class="progreso-texto" id="progresoTexto"></div>
+      </div>
     </div>
     <div id="listaClasesPaciente"></div>
   </main>
@@ -377,7 +396,8 @@ const MODULOS = [
   { id: 'oido-a-oido', titulo: 'Oído a oído', desc: 'Entrenaremos cada oído de manera individual para fortalecer tu capacidad de reconocer y comprender lo que escuchás.' },
   { id: 'dos-oidos', titulo: 'Dos oídos, una experiencia', desc: 'Trabajaremos la binauralidad, la localización sonora y el aprovechamiento de la información que recibís a través de ambos oídos, incorporando progresivamente situaciones con ruido de fondo.' },
   { id: 'escuchar-sin-agotarte', titulo: 'Escuchar sin agotarte', desc: 'Entrenaremos atención y memoria auditiva, mientras aprendemos a reconocer y manejar el esfuerzo y la fatiga que puede generar escuchar.' },
-  { id: 'control-de-tu-escucha', titulo: 'Tomá el control de tu escucha', desc: 'Integraremos todo lo aprendido con estrategias para situaciones reales, fortaleciendo tu empoderamiento auditivo y personal, para que puedas comunicar tus necesidades, ganar autonomía y participar con mayor seguridad y confianza.' }
+  { id: 'control-de-tu-escucha', titulo: 'Tomá el control de tu escucha', desc: 'Integraremos todo lo aprendido con estrategias para situaciones reales, fortaleciendo tu empoderamiento auditivo y personal, para que puedas comunicar tus necesidades, ganar autonomía y participar con mayor seguridad y confianza.' },
+  { id: 'habilitacion-auditiva', titulo: 'Habilitación Auditiva', desc: '' }
 ];
 function nombreModulo(id){ return MODULOS.find(m => m.id === id)?.titulo || 'Sin módulo'; }
 
@@ -581,67 +601,130 @@ async function moverActividad(id, moduloId, direccion){
   renderClasesProfesional();
 }
 
+let actividadesPaciente = [];
+let completadas = new Set();
+
+function esc(t){ return String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Entrega el video en MP4/H.264 (el formato que reproducen todos los celulares, tablets y PCs).
+// Si por algún motivo esa versión no está lista, el navegador cae al archivo original.
+function urlVideoMp4(url){
+  if(!url.includes('/video/upload/')) return url;
+  return url.replace('/video/upload/', '/video/upload/f_mp4,vc_h264,ac_aac,q_auto/').replace(/\.[a-zA-Z0-9]+$/, '.mp4');
+}
+
 async function cargarClasesPaciente(){
   const cont = document.getElementById('listaClasesPaciente');
   cont.innerHTML = '<div class="vacio">Cargando tus actividades...</div>';
 
-  document.getElementById('saludoPaciente').textContent = '¡Hola!';
+  document.getElementById('saludoPaciente').textContent = '¡Bienvenido/a!';
   const docPaciente = await db.collection('pacientes_fono').doc(usuarioActual.uid).get();
   if(docPaciente.exists){
-    const nombre = docPaciente.data().nombre || '';
-    document.getElementById('saludoPaciente').textContent = `¡Hola, ${nombre.split(' ')[0]}!`;
+    const nombre = (docPaciente.data().nombre || '').trim().split(' ')[0];
+    if(nombre) document.getElementById('saludoPaciente').textContent = `¡Bienvenido/a, ${nombre}!`;
   }
 
   const snap = await db.collection('clases_fono')
     .where('asignados', 'array-contains', usuarioActual.uid)
     .get();
+  actividadesPaciente = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  if(snap.empty){
+  completadas = new Set();
+  try{
+    const prog = await db.collection('progreso_fono').where('pacienteUid', '==', usuarioActual.uid).get();
+    completadas = new Set(prog.docs.map(d => d.data().actividadId));
+  }catch(e){ /* si todavía no están publicadas las reglas nuevas, se muestra todo sin progreso */ }
+
+  renderPortalPaciente();
+}
+
+function renderPortalPaciente(){
+  const cont = document.getElementById('listaClasesPaciente');
+  if(actividadesPaciente.length === 0){
     cont.innerHTML = '<div class="vacio">Todavía no tenés actividades asignadas.</div>';
+    actualizarProgreso();
     return;
   }
-
-  const actividades = snap.docs.map(d => d.data());
   cont.innerHTML = MODULOS.map(m => {
-    const actividadesModulo = actividades
+    const delModulo = actividadesPaciente
       .filter(c => (c.modulo || 'oido-a-oido') === m.id)
       .sort((a,b) => (a.orden ?? 0) - (b.orden ?? 0));
-    if(actividadesModulo.length === 0) return '';
+    if(delModulo.length === 0) return '';
     return `
-    <div style="margin-bottom:28px;">
-      <div style="font-weight:800; color:var(--azul-dark); font-size:1.05rem;">${m.titulo}</div>
-      <div style="font-size:0.82rem; color:var(--text-soft); margin:4px 0 12px;">${m.desc}</div>
-      ${actividadesModulo.map(c => renderTarjetaActividad(c)).join('')}
+    <div style="margin-top:32px;">
+      <div class="modulo-franja">
+        <div class="modulo-titulo">${m.titulo}</div>
+        ${m.desc ? `<div class="modulo-desc">${m.desc}</div>` : ''}
+      </div>
+      ${delModulo.map(c => renderTarjetaActividad(c)).join('')}
     </div>`;
   }).join('');
+  actualizarProgreso();
+}
+
+function actualizarProgreso(){
+  const total = actividadesPaciente.length;
+  const hechas = actividadesPaciente.filter(a => completadas.has(a.id)).length;
+  const pct = total ? Math.round((hechas / total) * 100) : 0;
+  document.getElementById('progresoRelleno').style.width = pct + '%';
+  document.getElementById('progresoTexto').textContent = total
+    ? `${hechas} de ${total} completadas · ${pct}% de tu programa`
+    : '';
+}
+
+function pintarBotonCompletar(btn, hecha){
+  if(!btn) return;
+  btn.classList.toggle('hecha', hecha);
+  btn.textContent = hecha ? '✓ Completada' : 'Marcar como completada';
+}
+
+async function toggleCompletada(id){
+  const ref = db.collection('progreso_fono').doc(`${usuarioActual.uid}_${id}`);
+  const btn = document.getElementById('btn-comp-' + id);
+  const eraCompletada = completadas.has(id);
+
+  if(eraCompletada) completadas.delete(id); else completadas.add(id);
+  pintarBotonCompletar(btn, !eraCompletada);
+  actualizarProgreso();
+
+  try{
+    if(eraCompletada) await ref.delete();
+    else await ref.set({ pacienteUid: usuarioActual.uid, actividadId: id, fecha: firebase.firestore.FieldValue.serverTimestamp() });
+  }catch(e){
+    if(eraCompletada) completadas.add(id); else completadas.delete(id);
+    pintarBotonCompletar(btn, eraCompletada);
+    actualizarProgreso();
+    alert('No se pudo guardar tu progreso. Probá de nuevo.');
+  }
 }
 
 function renderTarjetaActividad(c){
-  // Compatibilidad con actividades creadas antes de esta actualización,
-  // que guardaban el video en el campo "video" en vez de "archivoUrl"/"archivoTipo"
+  // Compatibilidad con actividades viejas que guardaban el video en el campo "video"
   const archivoUrl = c.archivoUrl || c.video || null;
   const archivoTipo = c.archivoTipo || (c.video ? 'video' : null);
 
   let contenidoArchivo = '';
   if(archivoUrl){
     if(archivoTipo === 'video'){
-      contenidoArchivo = `<div class="video-wrap"><video src="${archivoUrl}" controls playsinline preload="metadata"></video></div>`;
+      contenidoArchivo = `<div class="video-wrap" oncontextmenu="return false;"><video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="metadata" oncontextmenu="return false;"><source src="${urlVideoMp4(archivoUrl)}" type="video/mp4"><source src="${archivoUrl}"></video></div>`;
     } else if(archivoTipo === 'image'){
       contenidoArchivo = `<img src="${archivoUrl}" style="width:100%; display:block;">`;
     } else {
-      contenidoArchivo = `<a href="${archivoUrl}" target="_blank" class="btn-primario" style="display:block; text-align:center; text-decoration:none; margin-top:10px;">📄 Ver archivo</a>`;
+      contenidoArchivo = `<a href="${archivoUrl}" target="_blank" class="btn-primario" style="display:block; text-align:center; text-decoration:none; margin:10px 16px 0; width:auto;">📄 Ver archivo</a>`;
     }
   }
   const botonLink = c.link
     ? `<a href="${c.link}" target="_blank" class="btn-primario" style="display:block; text-align:center; text-decoration:none; margin-top:10px;">🔗 Abrir link</a>`
     : '';
+  const hecha = completadas.has(c.id);
   return `
     <div class="card video-card">
       ${contenidoArchivo}
       <div class="video-body">
-        <div class="titulo">${c.titulo}</div>
-        <div class="desc">${c.desc || ''}</div>
+        <div class="titulo">${esc(c.titulo)}</div>
+        <div class="desc">${esc(c.desc || '')}</div>
         ${botonLink}
+        <button id="btn-comp-${c.id}" class="btn-completar ${hecha ? 'hecha' : ''}" onclick="toggleCompletada('${c.id}')">${hecha ? '✓ Completada' : 'Marcar como completada'}</button>
       </div>
     </div>`;
 }
@@ -661,6 +744,11 @@ async function guardarClase(){
   }
   if(!archivo && !link && !desc && !editandoId){
     alert('Agregá al menos un archivo, un link o un mensaje.');
+    return;
+  }
+
+  if(archivo && archivo.size > 100 * 1024 * 1024){
+    alert(`El archivo pesa ${(archivo.size/1024/1024).toFixed(0)} MB y el límite actual es de 100 MB. Probá comprimiendo el video o grabándolo en menor resolución.`);
     return;
   }
 
@@ -828,7 +916,7 @@ function mostrarAvisosWhatsapp(pacientesAvisar, tituloActividad){
   if(pacientesAvisar.length === 0) return;
   const mensaje = encodeURIComponent(`Hola! Te dejé una nueva actividad en la plataforma: "${tituloActividad}". Podés verla entrando a tu cuenta 👂`);
   const links = pacientesAvisar.map(p =>
-    `<a href="https://wa.me/${p.telefono}?text=${mensaje}" target="_blank" class="btn-primario" style="display:block; text-decoration:none; text-align:center; margin-top:8px; background:#25D366;">📲 Avisar a ${p.nombre}</a>`
+    `<a href="https://wa.me/${p.telefono}?text=${mensaje}" target="_blank" class="btn-primario" style="display:block; text-decoration:none; text-align:center; margin-top:8px; background:var(--coral);">📲 Avisar a ${p.nombre}</a>`
   ).join('');
   const cont = document.getElementById('listaClasesProfesional');
   cont.insertAdjacentHTML('afterbegin', `<div class="card">
@@ -871,9 +959,11 @@ function renderClasesProfesional(){
         }).join('');
 
     return `
-    <div style="margin-bottom:28px;">
-      <div style="font-weight:800; color:var(--azul-dark); font-size:1.05rem;">${m.titulo}</div>
-      <div style="font-size:0.82rem; color:var(--text-soft); margin:4px 0 12px;">${m.desc}</div>
+    <div style="margin-top:32px;">
+      <div class="modulo-franja">
+        <div class="modulo-titulo">${m.titulo}</div>
+        ${m.desc ? `<div class="modulo-desc">${m.desc}</div>` : ''}
+      </div>
       ${items}
     </div>`;
   }).join('');
